@@ -2,6 +2,54 @@
 
 A Terraform module for creating and managing Google Cloud Platform (GCP) VPC networks with support for custom subnets, secondary ranges for GKE, Private Google Access, Cloud NAT, firewall rules, Shared VPC, and private DNS zones.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph VPC["VPC Network"]
+        style VPC fill:#0078D4,color:#fff
+        Network["Custom VPC"]
+        RoutingMode["Routing Mode\n(Regional / Global)"]
+    end
+
+    subgraph Subnets["Subnets"]
+        style Subnets fill:#3F8624,color:#fff
+        Subnet1["Subnet 1"]
+        Subnet2["Subnet N"]
+        SecondaryRanges["Secondary Ranges\n(GKE Pods/Services)"]
+        PGA["Private Google Access"]
+        FlowLogs["VPC Flow Logs"]
+    end
+
+    subgraph NAT["Cloud NAT"]
+        style NAT fill:#FF9900,color:#fff
+        CloudRouter["Cloud Router"]
+        CloudNAT["Cloud NAT Gateway"]
+        CloudRouter --> CloudNAT
+    end
+
+    subgraph Firewall["Firewall Rules"]
+        style Firewall fill:#DD344C,color:#fff
+        AllowRules["Allow Rules"]
+        DenyRules["Deny Rules"]
+        TargetTags["Target Tags /\nService Accounts"]
+    end
+
+    subgraph Advanced["Shared VPC & DNS"]
+        style Advanced fill:#8C4FFF,color:#fff
+        SharedVPC["Shared VPC Host"]
+        ServiceProjects["Service Projects"]
+        PrivateDNS["Private DNS Zones"]
+        SharedVPC --> ServiceProjects
+    end
+
+    VPC --> Subnets
+    VPC --> NAT
+    VPC --> Firewall
+    VPC --> Advanced
+    Subnet1 --> SecondaryRanges
+```
+
 ## Features
 
 - **Custom VPC Network** with configurable routing mode and MTU
