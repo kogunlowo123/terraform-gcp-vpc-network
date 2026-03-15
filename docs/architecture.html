@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>terraform-gcp-vpc-network | Architecture</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0b0c0b;color:#f5f2eb;font-family:'Courier New',Courier,monospace;line-height:1.7;padding:0}
+a{color:#c8420a;text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1200px;margin:0 auto;padding:2rem}
+header{background:linear-gradient(135deg,#0b0c0b 0%,#1a1b1a 100%);border-bottom:2px solid #c8420a;padding:2rem 0}
+header .container{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+header h1{font-size:1.8rem;letter-spacing:1px}
+.badge{display:inline-flex;align-items:center;gap:.5rem;background:#1a1b1a;border:1px solid #333;border-radius:6px;padding:.4rem .8rem;font-size:.8rem}
+.badge img{height:18px}
+.section{margin:3rem 0}
+.section h2{font-size:1.4rem;color:#c8420a;border-bottom:1px solid #222;padding-bottom:.5rem;margin-bottom:1.5rem}
+.section h3{font-size:1.1rem;color:#f5f2eb;margin:1.5rem 0 .75rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.card{background:#131413;border:1px solid #222;border-radius:8px;padding:1.25rem;transition:border-color .2s}
+.card:hover{border-color:#c8420a}
+.card h3{margin:0 0 .5rem;font-size:1rem;color:#c8420a}
+.card p{font-size:.85rem;color:#aaa}
+.card .stat{font-size:1.6rem;font-weight:bold;color:#f5f2eb}
+.diagram{background:#131413;border:1px solid #222;border-radius:8px;padding:2rem;overflow-x:auto}
+.diagram .row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.5rem;margin:.75rem 0}
+.diagram .box{background:#1a1b1a;border:1px solid #c8420a;border-radius:6px;padding:.75rem 1.25rem;text-align:center;font-size:.8rem;min-width:120px}
+.diagram .box.highlight{background:#c8420a;color:#fff;border-color:#c8420a}
+.diagram .arrow{color:#c8420a;font-size:1.2rem}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:1rem 0}
+table th{text-align:left;padding:.6rem;background:#1a1b1a;color:#c8420a;border-bottom:2px solid #c8420a}
+table td{padding:.6rem;border-bottom:1px solid #1a1b1a}
+table tr:hover td{background:#131413}
+.checklist{list-style:none;padding:0}
+.checklist li{padding:.4rem 0;padding-left:1.5rem;position:relative;font-size:.9rem}
+.checklist li::before{content:"[x]";position:absolute;left:0;color:#c8420a;font-weight:bold}
+code{background:#1a1b1a;padding:.15rem .4rem;border-radius:3px;font-size:.85rem;color:#c8420a}
+pre{background:#131413;border:1px solid #222;border-radius:8px;padding:1.25rem;overflow-x:auto;font-size:.82rem;line-height:1.6}
+footer{border-top:2px solid #c8420a;margin-top:4rem;padding:2rem 0;text-align:center;font-size:.8rem;color:#555}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:768px){.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<div class="container">
+<div>
+<h1>terraform-gcp-vpc-network</h1>
+<p style="color:#aaa;font-size:.9rem;margin-top:.25rem">Enterprise VPC Networking on Google Cloud</p>
+</div>
+<div style="display:flex;gap:.75rem;align-items:center">
+<span class="badge"><img src="https://www.gstatic.com/devrel-devsite/prod/v0e0f589edd85502a40d78d7d0f2f25834f5f2f981ee4e9bc3ad30721d1c038af/cloud/images/favicons/onecloud/super_cloud.png" alt="GCP">Google Cloud Platform</span>
+<span class="badge">Terraform Module</span>
+</div>
+</div>
+</header>
+
+<div class="container">
+
+<div class="section">
+<h2>Executive Summary</h2>
+<p>This Terraform module creates and manages a complete VPC networking stack on Google Cloud Platform. It provisions custom VPC networks with configurable routing mode and MTU, subnets with secondary IP ranges (for GKE pods/services), Private Google Access, VPC Flow Logs, Cloud NAT with Cloud Router for outbound internet access, firewall rules with allow/deny and target tags or service accounts, Shared VPC host/service project configuration, private DNS zones, and VPC Access Connectors for serverless services. The module serves as the foundational networking layer for all other GCP infrastructure.</p>
+</div>
+
+<div class="section">
+<h2>Overview</h2>
+<div class="cards">
+<div class="card"><div class="stat">7</div><h3>Resource Types</h3><p>VPC, Subnets, Router, NAT, Firewall, DNS, Shared VPC, VPC Connector</p></div>
+<div class="card"><div class="stat">2</div><h3>Routing Modes</h3><p>REGIONAL and GLOBAL routing</p></div>
+<div class="card"><div class="stat">15</div><h3>Input Variables</h3><p>Network, subnets, firewall, NAT, DNS, Shared VPC, tags</p></div>
+<div class="card"><div class="stat">17</div><h3>Outputs</h3><p>Network, subnet, router, NAT, firewall, DNS IDs and links</p></div>
+</div>
+</div>
+
+<div class="section">
+<h2>Architecture Diagram</h2>
+<div class="diagram">
+<div class="row">
+<div class="box highlight">Custom VPC Network<br><small>Routing Mode + MTU</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Subnet 1<br><small>Primary CIDR</small></div>
+<div class="box">Subnet N<br><small>Primary CIDR</small></div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Secondary Ranges<br><small>GKE Pods/Services</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Private Google Access<br><small>Per Subnet</small></div>
+<div class="box">VPC Flow Logs<br><small>5s Intervals</small></div>
+<div class="box">VPC Connector<br><small>Serverless Access</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Cloud Router<br><small>BGP ASN 64514</small></div>
+<div class="arrow">--&gt;</div>
+<div class="box">Cloud NAT<br><small>Auto IP + Port Config</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Firewall Allow<br><small>Protocol + Ports</small></div>
+<div class="box">Firewall Deny<br><small>Priority Rules</small></div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Target Tags<br><small>Service Accounts</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Shared VPC Host<br><small>Service Projects</small></div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Private DNS<br><small>Managed Zones</small></div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Component Breakdown</h2>
+<div class="grid-2">
+<div>
+<h3>VPC Network (<code>google_compute_network</code>)</h3>
+<p>Custom mode VPC with configurable auto-create subnetworks (default: false), routing mode (REGIONAL/GLOBAL, validated), MTU (1300-8896, validated), and optional deletion of default 0.0.0.0/0 routes.</p>
+
+<h3>Subnets (<code>google_compute_subnetwork</code>)</h3>
+<p>Created via for_each from a list of subnet objects. Each supports primary CIDR range, secondary IP ranges for GKE pods/services, Private Google Access per subnet, and VPC Flow Logs with 5-second intervals and 50% sampling.</p>
+
+<h3>Cloud NAT (<code>google_compute_router_nat</code>)</h3>
+<p>Cloud Router with BGP ASN 64514 paired with Cloud NAT gateway. Configurable: IP allocation (AUTO_ONLY), source subnet ranges, min/max ports per VM, idle timeouts (UDP, ICMP, TCP established/transitory/time-wait), endpoint independent mapping, and log config.</p>
+</div>
+<div>
+<h3>Firewall Rules (<code>google_compute_firewall</code>)</h3>
+<p>Dynamic firewall rules with allow/deny blocks, direction (INGRESS/EGRESS), priority, source/destination ranges, target tags, and target service accounts. Supports multiple protocol/port combinations per rule.</p>
+
+<h3>Shared VPC</h3>
+<p>Optional Shared VPC host project enablement via <code>google_compute_shared_vpc_host_project</code> with service project attachment via <code>google_compute_shared_vpc_service_project</code>.</p>
+
+<h3>Private DNS & VPC Connectors</h3>
+<p>Private DNS managed zones associated with the VPC for internal name resolution. VPC Access Connectors auto-created for subnets with secondary ranges, enabling serverless VPC access.</p>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Data Flow</h2>
+<div class="diagram">
+<div class="row">
+<div class="box">Internet</div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Cloud NAT</div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box highlight">VPC Network</div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Firewall Rules Filter</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Subnets (Primary CIDRs)</div>
+<div class="arrow">--&gt;</div>
+<div class="box">VM / GKE / Serverless</div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Private Google Access</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Google APIs</div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Private DNS Resolution</div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Shared VPC Host</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Service Projects</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Shared Subnets</div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Security Controls</h2>
+<table>
+<tr><th>Control</th><th>Implementation</th><th>Details</th></tr>
+<tr><td>Network Segmentation</td><td>Custom subnets with specific CIDRs</td><td>No auto-create, explicit allocation</td></tr>
+<tr><td>Firewall Rules</td><td>Allow/deny with priority ordering</td><td>Target tags or service accounts</td></tr>
+<tr><td>Private Access</td><td>Private Google Access per subnet</td><td>Access Google APIs without public IPs</td></tr>
+<tr><td>Flow Logging</td><td>VPC Flow Logs</td><td>5-second intervals, 50% sampling, all metadata</td></tr>
+<tr><td>NAT Security</td><td>Cloud NAT for outbound only</td><td>No inbound; configurable port/timeout</td></tr>
+<tr><td>Default Route Control</td><td>Optional default route deletion</td><td>Enforce all traffic through NAT/proxy</td></tr>
+<tr><td>MTU Validation</td><td>Range validation 1300-8896</td><td>Terraform validation block</td></tr>
+<tr><td>Routing Mode Validation</td><td>REGIONAL or GLOBAL only</td><td>Terraform validation block</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Industry Adaptation</h2>
+<div class="cards">
+<div class="card"><h3>GKE Clusters</h3><p>Subnets with secondary ranges for pods/services. Cloud NAT for node egress. Private Google Access for container pulls.</p></div>
+<div class="card"><h3>Multi-Project Org</h3><p>Shared VPC host with service project attachment. Centralized network management with delegated access.</p></div>
+<div class="card"><h3>Serverless Apps</h3><p>VPC Access Connectors auto-created for subnets. Cloud Functions/Run connect to VPC resources securely.</p></div>
+<div class="card"><h3>Hybrid Cloud</h3><p>Global routing mode for cross-region connectivity. Private DNS zones for on-prem integration. Firewall rules for VPN traffic.</p></div>
+</div>
+</div>
+
+<div class="section">
+<h2>Production Readiness Checklist</h2>
+<ul class="checklist">
+<li>Use custom subnet mode (auto_create_subnetworks = false)</li>
+<li>Enable Private Google Access on all subnets</li>
+<li>Enable VPC Flow Logs for network monitoring</li>
+<li>Configure Cloud NAT for outbound internet access</li>
+<li>Define firewall rules with explicit allow/deny</li>
+<li>Use service account targeting over network tags</li>
+<li>Configure secondary ranges for GKE pods/services</li>
+<li>Set up Shared VPC for multi-project environments</li>
+<li>Create private DNS zones for internal resolution</li>
+<li>Validate MTU and routing mode settings</li>
+<li>Plan IP address space to avoid CIDR conflicts</li>
+<li>Apply consistent labels for cost attribution</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Configuration Reference</h2>
+<table>
+<tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>project_id</code></td><td>string</td><td>required</td><td>GCP project ID</td></tr>
+<tr><td><code>network_name</code></td><td>string</td><td>required</td><td>VPC network name</td></tr>
+<tr><td><code>routing_mode</code></td><td>string</td><td>GLOBAL</td><td>REGIONAL or GLOBAL (validated)</td></tr>
+<tr><td><code>mtu</code></td><td>number</td><td>1460</td><td>MTU 1300-8896 (validated)</td></tr>
+<tr><td><code>subnets</code></td><td>list(object)</td><td>[]</td><td>Subnet configs with secondary ranges</td></tr>
+<tr><td><code>firewall_rules</code></td><td>list(object)</td><td>[]</td><td>Firewall allow/deny rules</td></tr>
+<tr><td><code>enable_cloud_nat</code></td><td>bool</td><td>true</td><td>Enable Cloud NAT</td></tr>
+<tr><td><code>cloud_nat_config</code></td><td>object</td><td>{}</td><td>NAT IP, ports, timeouts, logging</td></tr>
+<tr><td><code>enable_shared_vpc_host</code></td><td>bool</td><td>false</td><td>Enable Shared VPC host</td></tr>
+<tr><td><code>private_dns_zones</code></td><td>list(object)</td><td>[]</td><td>Private DNS managed zones</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Deployment</h2>
+<pre>
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+
+# Verify network
+gcloud compute networks describe $(terraform output -raw network_name) \
+  --project=YOUR_PROJECT_ID
+
+# List subnets
+gcloud compute networks subnets list \
+  --network=$(terraform output -raw network_name) \
+  --project=YOUR_PROJECT_ID
+</pre>
+</div>
+
+<div class="section">
+<h2>Links</h2>
+<p>
+<a href="https://cloud.google.com/vpc/docs">VPC Documentation</a> |
+<a href="https://cloud.google.com/nat/docs">Cloud NAT Documentation</a> |
+<a href="https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/compute_network">Terraform Registry</a> |
+<a href="https://github.com/kogunlowo123/terraform-gcp-vpc-network">GitHub Repository</a> |
+<a href="https://cloud.google.com/vpc/docs/shared-vpc">Shared VPC</a>
+</p>
+</div>
+
+</div>
+
+<footer>
+<div class="container">
+<p>terraform-gcp-vpc-network | Architecture Documentation</p>
+<p style="margin-top:.5rem">Generated from source analysis | Terraform >= 1.5.0 | Google Provider >= 5.10.0</p>
+</div>
+</footer>
+</body>
+</html>
