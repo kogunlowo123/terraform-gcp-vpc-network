@@ -3,7 +3,7 @@ data "google_project" "current" {
 }
 
 data "google_compute_zones" "available" {
-  for_each = local.subnets_map
+  for_each = { for s in var.subnets : s.name => s }
   project  = var.project_id
   region   = each.value.region
 }

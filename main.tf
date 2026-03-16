@@ -1,7 +1,3 @@
-###############################################################################
-# VPC Network
-###############################################################################
-
 resource "google_compute_network" "vpc" {
   name                    = var.network_name
   project                 = var.project_id
@@ -13,12 +9,8 @@ resource "google_compute_network" "vpc" {
   delete_default_routes_on_create = var.delete_default_routes
 }
 
-###############################################################################
-# Subnets
-###############################################################################
-
 resource "google_compute_subnetwork" "subnets" {
-  for_each = local.subnets_map
+  for_each = { for s in var.subnets : s.name => s }
 
   name                     = each.value.name
   project                  = var.project_id
@@ -45,16 +37,12 @@ resource "google_compute_subnetwork" "subnets" {
   }
 }
 
-###############################################################################
-# Cloud Router (for Cloud NAT)
-###############################################################################
-
 resource "google_compute_router" "router" {
   count = var.enable_cloud_nat ? 1 : 0
 
-  name    = local.router_name
+  name    = "${var.network_name}-router"
   project = var.project_id
-  region  = local.nat_region
+  region  = var.nat_region != "" ? var.nat_region : (length(var.subnets) > 0 ? var.subnets[0].region : "us-central1")
   network = google_compute_network.vpc.id
 
   bgp {
@@ -62,17 +50,13 @@ resource "google_compute_router" "router" {
   }
 }
 
-###############################################################################
-# Cloud NAT
-###############################################################################
-
 resource "google_compute_router_nat" "nat" {
   count = var.enable_cloud_nat ? 1 : 0
 
-  name                                = local.nat_name
+  name                                = var.nat_name != "" ? var.nat_name : "${var.network_name}-cloud-nat"
   project                             = var.project_id
   router                              = google_compute_router.router[0].name
-  region                              = local.nat_region
+  region                              = var.nat_region != "" ? var.nat_region : (length(var.subnets) > 0 ? var.subnets[0].region : "us-central1")
   nat_ip_allocate_option              = var.cloud_nat_config.nat_ip_allocate_option
   source_subnetwork_ip_ranges_to_nat  = var.cloud_nat_config.source_subnetwork_ip_ranges_to_nat
   min_ports_per_vm                    = var.cloud_nat_config.min_ports_per_vm
@@ -93,12 +77,8 @@ resource "google_compute_router_nat" "nat" {
   }
 }
 
-###############################################################################
-# Firewall Rules
-###############################################################################
-
 resource "google_compute_firewall" "rules" {
-  for_each = local.firewall_rules_map
+  for_each = { for r in var.firewall_rules : r.name => r }
 
   name      = each.value.name
   project   = var.project_id
@@ -129,18 +109,14 @@ resource "google_compute_firewall" "rules" {
   }
 }
 
-###############################################################################
-# Private DNS Managed Zones
-###############################################################################
-
 resource "google_dns_managed_zone" "private_zones" {
-  for_each = local.dns_zones_map
+  for_each = { for z in var.private_dns_zones : z.name => z }
 
   name        = each.value.name
   project     = var.project_id
   dns_name    = each.value.dns_name
   description = each.value.description
-  labels      = local.common_labels
+  labels      = var.labels
   visibility  = "private"
 
   private_visibility_config {
@@ -149,10 +125,6 @@ resource "google_dns_managed_zone" "private_zones" {
     }
   }
 }
-
-###############################################################################
-# Shared VPC
-###############################################################################
 
 resource "google_compute_shared_vpc_host_project" "host" {
   count = var.enable_shared_vpc_host ? 1 : 0
@@ -168,10 +140,6 @@ resource "google_compute_shared_vpc_service_project" "service_projects" {
 
   depends_on = [google_compute_shared_vpc_host_project.host]
 }
-
-###############################################################################
-# VPC Access Connector (for Serverless VPC Access)
-###############################################################################
 
 resource "google_vpc_access_connector" "connector" {
   for_each = {
