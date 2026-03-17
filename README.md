@@ -1,3 +1,9 @@
+![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.5-blueviolet?logo=terraform)
+![GCP](https://img.shields.io/badge/GCP-4285F4?logo=googlecloud&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+![CI](https://img.shields.io/github/actions/workflow/status/kogunlowo123/terraform-gcp-vpc-network/terraform-ci.yml?label=CI)
+![GitHub release](https://img.shields.io/github/v/release/kogunlowo123/terraform-gcp-vpc-network)
+
 # Terraform GCP VPC Network Module
 
 A Terraform module for creating and managing Google Cloud Platform (GCP) VPC networks with support for custom subnets, secondary ranges for GKE, Private Google Access, Cloud NAT, firewall rules, Shared VPC, and private DNS zones.
